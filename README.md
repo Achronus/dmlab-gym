@@ -10,45 +10,51 @@ DeepMind Lab is a 3D learning environment based on id Software's Quake III Arena
 - **Python 3.13** C extension and package support
 - **Gymnasium/Shimmy** wrapper for standard RL interfaces
 
-The engine builds inside a Podman container. The resulting wheel installs into a host-side `uv` environment.
+The engine builds inside a container (Podman or Docker). The resulting wheel installs into a host-side `uv` environment.
+
+## Platform Support
+
+| Platform       | Status        |
+| -------------- | ------------- |
+| Linux (x86_64) | Supported     |
+| macOS          | Not supported |
+| Windows        | Not supported |
 
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) (Python environment management)
 - [Podman](https://podman.io/) or [Docker](https://www.docker.com/) (container builds)
 - Python 3.13+
-- OSMesa (runtime dependency for headless rendering)
+- OSMesa (runtime dependency for headless rendering) — installed automatically by `dmlab-gym build` if missing
 
-Install OSMesa for your distribution:
+<details>
+<summary>Manual OSMesa install</summary>
 
-| Distribution | Command |
-|---|---|
-| Fedora / RHEL | `sudo dnf install mesa-libOSMesa` or `mesa-compat-libOSMesa` |
-| Bluefin / immutable | `rpm-ostree install mesa-compat-libOSMesa` (reboot required) |
-| Ubuntu / Debian | `sudo apt install libosmesa6` |
-| Arch | `sudo pacman -S mesa` |
+| Distribution        | Command                                                                 |
+| ------------------- | ----------------------------------------------------------------------- |
+| Fedora / RHEL       | `sudo dnf install mesa-libOSMesa` or `mesa-compat-libOSMesa`            |
+| Bluefin / immutable | `sudo dnf install --transient mesa-compat-libOSMesa` (resets on reboot) |
+| Ubuntu / Debian     | `sudo apt install libosmesa6`                                           |
+| Arch                | `sudo pacman -S mesa`                                                   |
+
+</details>
 
 ## Building
 
 ### Quick Start
 
 ```bash
-./build_wheel.sh              # builds to /tmp/dmlab_pkg/
-./build_wheel.sh ~/my_output  # or specify a custom output directory
+dmlab-gym build                        # build and install deepmind-lab
+dmlab-gym build -o ~/my_output         # custom output directory
+dmlab-gym build --no-install           # build only, skip install
 ```
 
-The script auto-detects Podman or Docker and handles the container build + wheel packaging.
-
-### Install the Wheel
-
-```bash
-uv pip install /tmp/dmlab_pkg/deepmind_lab-1.0-py3-none-any.whl
-```
+This auto-detects Podman or Docker, builds the native extension inside a container, and installs the resulting wheel into your current environment.
 
 ### Verify
 
 ```bash
-uv run python -c "import deepmind_lab; print('OK')"
+python -c "import deepmind_lab; print('OK')"
 ```
 
 ### Manual Build
@@ -91,20 +97,21 @@ docker run --rm \
 
 ## Project Structure
 
-| Directory | Description |
-|-----------|-------------|
-| `engine/` | ioquake3 game engine (GPLv2) |
-| `q3map2/` | Map compilation tools (GPLv2) |
-| `assets/` | DeepMind Lab assets (CC BY 4.0) |
-| `assets_oa/` | Open Arena assets (GPLv2) |
-| `game_scripts/` | Lua game/level scripts |
-| `python/` | Python C extension and pip package |
-| `deepmind/` | Core DeepMind Lab code |
-| `public/` | Public API headers |
-| `third_party/` | Vendored dependencies |
-| `bazel/` | Bazel build configuration |
-| `testing/` | Test utilities |
-| `examples/` | Example agent code |
+| Directory       | Description                        |
+| --------------- | ---------------------------------- |
+| `engine/`       | ioquake3 game engine (GPLv2)       |
+| `q3map2/`       | Map compilation tools (GPLv2)      |
+| `assets/`       | DeepMind Lab assets (CC BY 4.0)    |
+| `assets_oa/`    | Open Arena assets (GPLv2)          |
+| `game_scripts/` | Lua game/level scripts             |
+| `python/`       | Python C extension and pip package |
+| `deepmind/`     | Core DeepMind Lab code             |
+| `public/`       | Public API headers                 |
+| `third_party/`  | Vendored dependencies              |
+| `dmlab_gym/`    | Python package (CLI, utilities)    |
+| `bazel/`        | Bazel build configuration          |
+| `testing/`      | Test utilities                     |
+| `examples/`     | Example agent code                 |
 
 ## License
 

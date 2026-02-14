@@ -107,28 +107,28 @@ env.action_space  # Discrete(9)
 
 All standard [Gymnasium wrappers](https://gymnasium.farama.org/main/api/wrappers/) are compatible:
 
-| Wrapper | Compatible | Notes |
-| --- | --- | --- |
-| `GrayscaleObservation` | Yes | RGB to grayscale conversion |
-| `ResizeObservation` | Yes | Resize to any resolution (requires `gymnasium[other]`) |
-| `FrameStackObservation` | Yes | Stack N consecutive frames |
-| `MaxAndSkipObservation` | Yes | Frame skipping with max pooling |
-| `ReshapeObservation` | Yes | Reshape observation arrays |
-| `RescaleObservation` | Yes | Best used after `DtypeObservation(float)` |
-| `DtypeObservation` | Yes | Convert uint8 to float32/float64 |
-| `FlattenObservation` | Yes | Flatten to 1D |
-| `NormalizeObservation` | Yes | Running mean/std normalisation |
-| `TransformObservation` | Yes | Custom observation function |
-| `TimeLimit` | Yes | Truncate after N steps |
-| `ClipReward` | Yes | Bound rewards to a range |
-| `NormalizeReward` | Yes | Normalise rewards via running stats |
-| `TransformReward` | Yes | Custom reward function |
-| `RecordEpisodeStatistics` | Yes | Track episode returns and lengths |
-| `RecordVideo` | Yes | Requires `render_mode="rgb_array"` and `moviepy` |
-| `HumanRendering` | Yes | Requires `render_mode="rgb_array"`, `pygame`, and `opencv` |
-| `FilterObservation` | No | Box observation space (not Dict) |
-| `ClipAction` | No | Use `ActionDiscretize` instead |
-| `RescaleAction` | No | Use `ActionDiscretize` instead |
+| Wrapper                   | Compatible | Notes                                                      |
+| ------------------------- | ---------- | ---------------------------------------------------------- |
+| `GrayscaleObservation`    | Yes        | RGB to grayscale conversion                                |
+| `ResizeObservation`       | Yes        | Resize to any resolution (requires `gymnasium[other]`)     |
+| `FrameStackObservation`   | Yes        | Stack N consecutive frames                                 |
+| `MaxAndSkipObservation`   | Yes        | Frame skipping with max pooling                            |
+| `ReshapeObservation`      | Yes        | Reshape observation arrays                                 |
+| `RescaleObservation`      | Yes        | Best used after `DtypeObservation(float)`                  |
+| `DtypeObservation`        | Yes        | Convert uint8 to float32/float64                           |
+| `FlattenObservation`      | Yes        | Flatten to 1D                                              |
+| `NormalizeObservation`    | Yes        | Running mean/std normalisation                             |
+| `TransformObservation`    | Yes        | Custom observation function                                |
+| `TimeLimit`               | Yes        | Truncate after N steps                                     |
+| `ClipReward`              | Yes        | Bound rewards to a range                                   |
+| `NormalizeReward`         | Yes        | Normalise rewards via running stats                        |
+| `TransformReward`         | Yes        | Custom reward function                                     |
+| `RecordEpisodeStatistics` | Yes        | Track episode returns and lengths                          |
+| `RecordVideo`             | Yes        | Requires `render_mode="rgb_array"` and `moviepy`           |
+| `HumanRendering`          | Yes        | Requires `render_mode="rgb_array"`, `pygame`, and `opencv` |
+| `FilterObservation`       | No         | Box observation space (not Dict)                           |
+| `ClipAction`              | No         | Use `ActionDiscretize` instead                             |
+| `RescaleAction`           | No         | Use `ActionDiscretize` instead                             |
 
 ## License
 

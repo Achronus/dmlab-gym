@@ -30,7 +30,7 @@ http_archive(
 http_archive(
     name = "eigen_archive",
     build_file = "@//bazel:eigen.BUILD",
-    sha256 = "8586084f71f9bce7ac9f31f106f79ace8e4f25d9e5f982a54c13e508b2d4c769",
+    sha256 = "8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72",
     strip_prefix = "eigen-3.4.0",
     urls = [
         "https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz",
@@ -78,10 +78,10 @@ http_archive(
 http_archive(
     name = "zlib_archive",
     build_file = "@//bazel:zlib.BUILD",
-    sha256 = "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1",
-    strip_prefix = "zlib-1.2.11",
+    sha256 = "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+    strip_prefix = "zlib-1.3.1",
     urls = [
-        "https://zlib.net/zlib-1.2.11.tar.gz",
+        "https://zlib.net/zlib-1.3.1.tar.gz",
     ],
 )
 

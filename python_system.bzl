@@ -14,6 +14,9 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # ============================================================================
+#
+# Modified by Achronus, 2025. Changes: removed Python 2 support,
+# replaced distutils.sysconfig with sysconfig (Python 3.12+).
 
 """Generates a local repository that points at the system's Python installation."""
 
@@ -24,23 +27,17 @@ exports_files(["defs.bzl"])
 
 cc_library(
     name = "python_headers",
-    hdrs = select({
-        "@bazel_tools//tools/python:PY2": glob(["python2/**/*.h", "numpy2/**/*.h"]),
-        "@bazel_tools//tools/python:PY3": glob(["python3/**/*.h", "numpy3/**/*.h"]),
-    }),
-    includes = select({
-        "@bazel_tools//tools/python:PY2": ["python2", "numpy2"],
-        "@bazel_tools//tools/python:PY3": ["python3", "numpy3"],
-    }),
+    hdrs = glob(["python3/**/*.h", "numpy3/**/*.h"]),
+    includes = ["python3", "numpy3"],
     visibility = ["//visibility:public"],
 )
 '''
 
 _GET_PYTHON_INCLUDE_DIR = """
 import sys
-from distutils.sysconfig import get_python_inc
+import sysconfig
 from numpy import get_include
-sys.stdout.write("{}\\n{}\\n".format(get_python_inc(), get_include()))
+sys.stdout.write("{}\\n{}\\n".format(sysconfig.get_path("include"), get_include()))
 """.strip()
 
 def _python_repo_impl(repository_ctx):
@@ -48,25 +45,16 @@ def _python_repo_impl(repository_ctx):
 
     repository_ctx.file("BUILD", _BUILD_FILE)
 
-    if repository_ctx.attr.py_version in ["PY2", "PY2AND3"]:
-        result = repository_ctx.execute(["python2", "-c", _GET_PYTHON_INCLUDE_DIR])
-        if result.return_code:
-            fail("Failed to run local Python2 interpreter: %s" % result.stderr)
-        pypath, nppath = result.stdout.splitlines()
-        repository_ctx.symlink(pypath, "python2")
-        repository_ctx.symlink(nppath, "numpy2")
-
-    if repository_ctx.attr.py_version in ["PY3", "PY2AND3"]:
-        result = repository_ctx.execute(["python3", "-c", _GET_PYTHON_INCLUDE_DIR])
-        if result.return_code:
-            fail("Failed to run local Python3 interpreter: %s" % result.stderr)
-        pypath, nppath = result.stdout.splitlines()
-        repository_ctx.symlink(pypath, "python3")
-        repository_ctx.symlink(nppath, "numpy3")
+    result = repository_ctx.execute(["python3", "-c", _GET_PYTHON_INCLUDE_DIR])
+    if result.return_code:
+        fail("Failed to run local Python3 interpreter: %s" % result.stderr)
+    pypath, nppath = result.stdout.splitlines()
+    repository_ctx.symlink(pypath, "python3")
+    repository_ctx.symlink(nppath, "numpy3")
 
 python_repo = repository_rule(
     implementation = _python_repo_impl,
     configure = True,
     local = True,
-    attrs = {"py_version": attr.string(default = "PY2AND3", values = ["PY2", "PY3", "PY2AND3"])},
+    attrs = {"py_version": attr.string(default = "PY3", values = ["PY3"])},
 )

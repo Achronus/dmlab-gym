@@ -13,17 +13,15 @@
 ## You should have received a copy of the GNU General Public License along
 ## with this program; if not, write to the Free Software Foundation, Inc.,
 ## 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+##
+## Modified by Achronus, 2025. Changes: removed six/Python 2 compatibility.
 ################################################################################
 """A working example of deepmind_lab using python."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import argparse
 import pprint
 import sys
 import numpy as np
-import six
 
 import deepmind_lab
 
@@ -51,7 +49,7 @@ def run(level_script, config, num_episodes):
   action[3] = 1
 
   score = 0
-  for _ in six.moves.range(num_episodes):
+  for _ in range(num_episodes):
     while env.is_running():
       # Advance the environment 4 frames while executing the action.
       reward = env.step(action, num_steps=4)
@@ -88,7 +86,7 @@ if __name__ == '__main__':
   # `config` key/value dictionary.
   config = {
       k: v
-      for k, v in [six.ensure_str(s).split('=') for s in args.level_settings]
+      for k, v in [s.split('=') for s in args.level_settings]
   }
 
   if args.runfiles_path:

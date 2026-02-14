@@ -45,7 +45,7 @@ function main() {
   cd "${TMPDIR}" && find deepmind_lab -type f | awk '$0="include "$0' >> "${MANIFEST_IN}"
 
   if [[ -z "${PYTHON_BIN_PATH}" ]]; then
-    PYTHON_BIN_PATH=$(which python || which python3 || true)
+    PYTHON_BIN_PATH=$(which python3.13 || which python3 || which python || true)
   fi
   if [[ ! -e "${PYTHON_BIN_PATH}" ]]; then
     echo "Invalid python path. ${PYTHON_BIN_PATH} cannot be found" 1>&2

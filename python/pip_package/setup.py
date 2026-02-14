@@ -11,8 +11,7 @@ setuptools.setup(
     author='DeepMind',
     packages=setuptools.find_packages(),
     install_requires=[
-        'numpy >= 1.13.3',
-        'six >= 1.10.0',
+        'numpy >= 1.26',
     ],
     extras_require={
         'dmenv_module': ['dm-env'],

@@ -21,11 +21,14 @@ is accessible this way. Use the module as follows:
   # ...
 """
 
-import imp
-from deepmind_lab import dmenv_module
-import pkg_resources
+import importlib.util
+import os
 
-_deepmind_lab = imp.load_dynamic(
-    __name__, pkg_resources.resource_filename(__name__, 'deepmind_lab.so'))
+from deepmind_lab import dmenv_module
+
+_so_path = os.path.join(os.path.dirname(__file__), 'deepmind_lab.so')
+_spec = importlib.util.spec_from_file_location(__name__, _so_path)
+_deepmind_lab = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_deepmind_lab)
 
 Lab = _deepmind_lab.Lab  # needed from within dmenv_module

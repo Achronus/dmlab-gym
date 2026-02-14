@@ -15,6 +15,10 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 ////////////////////////////////////////////////////////////////////////////////
+//
+// Modified 2026 by Achronus (dmlab-gym):
+//   - Removed deprecated RGB_INTERLACED / RGBD_INTERLACED observation aliases.
+//
 
 #include <errno.h>
 #include <inttypes.h>
@@ -99,8 +103,6 @@ enum ObservationsEnum {
   kObservations_BgrInterleaved,
   kObservations_BgrdInterleaved,
   kObservations_MapFrameNumber,
-  kObservations_RgbInterlaced,    // Deprecated.
-  kObservations_RgbdInterlaced,   // Deprecated.
 };
 
 const char* const kObservationNames[] = {
@@ -111,8 +113,6 @@ const char* const kObservationNames[] = {
     "BGR_INTERLEAVED",   //
     "BGRD_INTERLEAVED",  //
     "MAP_FRAME_NUMBER",  //
-    "RGB_INTERLACED",    //
-    "RGBD_INTERLACED",   //
 };
 
 typedef enum PixelBufferTypeEnum_e {
@@ -934,20 +934,12 @@ static void dmlab_observation_spec(
     spec->shape = gc->image_shape;
 
     switch (observation_idx) {
-      case kObservations_RgbInterlaced:
-        fprintf(stderr, "Using deprecated observation format: '%s'\n",
-                kObservationNames[observation_idx]);
-        // FALLTHROUGH_INTENDED
       case kObservations_RgbInterleaved:
       case kObservations_BgrInterleaved:
         gc->image_shape[0] = gc->height;
         gc->image_shape[1] = gc->width;
         gc->image_shape[2] = 3;
         break;
-      case kObservations_RgbdInterlaced:
-        fprintf(stderr, "Using deprecated observation format: '%s'\n",
-                kObservationNames[observation_idx]);
-        // FALLTHROUGH_INTENDED
       case kObservations_RgbdInterleaved:
       case kObservations_BgrdInterleaved:
         gc->image_shape[0] = gc->height;
@@ -1002,8 +994,7 @@ static void dmlab_observation(
       gc->current_screen_rendered = true;
     }
 
-    bool render_depth = observation_idx == kObservations_RgbdInterlaced ||
-                        observation_idx == kObservations_RgbdInterleaved ||
+    bool render_depth = observation_idx == kObservations_RgbdInterleaved ||
                         observation_idx == kObservations_RgbdPlanar ||
                         observation_idx == kObservations_BgrdInterleaved;
 
@@ -1023,14 +1014,12 @@ static void dmlab_observation(
     byte* temp_buffer = bind_pixel_observation(gc, pixelBufferType);
 
     switch (observation_idx) {
-      case kObservations_RgbInterlaced:
       case kObservations_RgbInterleaved:
       case kObservations_BgrInterleaved: {
         gc->image_buffer = realloc_or_die(gc->image_buffer, window_size * 3);
         memcpy(gc->image_buffer, temp_buffer, window_size * 3);
         break;
       }
-      case kObservations_RgbdInterlaced:
       case kObservations_RgbdInterleaved:
       case kObservations_BgrdInterleaved: {
         gc->image_buffer = realloc_or_die(gc->image_buffer, window_size * 4);
@@ -1081,7 +1070,6 @@ static void dmlab_observation(
       unsigned char* const image_buffer = gc->image_buffer;
       temp_buffer = bind_pixel_observation(gc, kPixelBufferTypeEnum_Depth);
       switch (observation_idx) {
-        case kObservations_RgbdInterlaced:
         case kObservations_RgbdInterleaved:
         case kObservations_BgrdInterleaved:
           for (int i = 0; i < height; ++i) {

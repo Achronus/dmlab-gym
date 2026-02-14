@@ -2,16 +2,6 @@
 
 A fork of [DeepMind Lab](https://github.com/google-deepmind/lab) updated for Bazel 8, Python 3.13, and wrapped with [Gymnasium](https://gymnasium.farama.org/) via [Shimmy](https://shimmy.farama.org/).
 
-## What This Is
-
-DeepMind Lab is a 3D learning environment based on id Software's Quake III Arena. This fork modernizes the build toolchain so it compiles and runs on current systems:
-
-- **Bazel 8** with `--enable_workspace` compatibility
-- **Python 3.13** C extension and package support
-- **Gymnasium/Shimmy** wrapper for standard RL interfaces
-
-The engine builds inside a container (Podman or Docker). The resulting wheel installs into a host-side `uv` environment.
-
 ## Platform Support
 
 | Platform       | Status        |
@@ -57,69 +47,27 @@ dmlab-gym build -o ~/my_output         # custom output directory
 dmlab-gym build --no-install           # build only, skip install
 ```
 
-This auto-detects Podman or Docker, builds the native extension inside a container, and installs the resulting wheel into your current environment.
+This auto-detects Podman or Docker, builds the native extension inside a container, installs the wheel, and verifies the import automatically.
 
-### Verify
+<details>
+<summary>Example output</summary>
 
-```bash
-python -c "import deepmind_lab; print('OK')"
+```
+$ dmlab-gym build
+
+Building deepmind-lab (podman)
+  Source: /home/user/.local/share/dmlab-gym/source
+  Output: /tmp/dmlab_pkg
+
+  ✓ Building container image
+  ✓ Compiling native extension (this may take a while)
+  ✓ Installing wheel
+  ✓ deepmind_lab is importable
+
+  Done! deepmind-lab installed from deepmind_lab-1.0-py3-none-any.whl
 ```
 
-### Manual Build
-
-If you prefer to run the steps yourself:
-
-**Podman:**
-
-```bash
-podman build -t dmlab-builder -f Dockerfile.build .
-
-mkdir -p /tmp/dmlab_pkg
-podman run --rm \
-    -v ./:/build/lab:Z \
-    -v /tmp/dmlab_pkg:/output:Z \
-    dmlab-builder \
-    bash -c "
-        bazel build -c opt //python/pip_package:build_pip_package \
-            --define headless=osmesa && \
-        ./bazel-bin/python/pip_package/build_pip_package /output
-    "
-```
-
-**Docker:**
-
-```bash
-docker build -t dmlab-builder -f Dockerfile.build .
-
-mkdir -p /tmp/dmlab_pkg
-docker run --rm \
-    -v ./:/build/lab \
-    -v /tmp/dmlab_pkg:/output \
-    dmlab-builder \
-    bash -c "
-        bazel build -c opt //python/pip_package:build_pip_package \
-            --define headless=osmesa && \
-        ./bazel-bin/python/pip_package/build_pip_package /output
-    "
-```
-
-## Project Structure
-
-| Directory       | Description                        |
-| --------------- | ---------------------------------- |
-| `engine/`       | ioquake3 game engine (GPLv2)       |
-| `q3map2/`       | Map compilation tools (GPLv2)      |
-| `assets/`       | DeepMind Lab assets (CC BY 4.0)    |
-| `assets_oa/`    | Open Arena assets (GPLv2)          |
-| `game_scripts/` | Lua game/level scripts             |
-| `python/`       | Python C extension and pip package |
-| `deepmind/`     | Core DeepMind Lab code             |
-| `public/`       | Public API headers                 |
-| `third_party/`  | Vendored dependencies              |
-| `dmlab_gym/`    | Python package (CLI, utilities)    |
-| `bazel/`        | Bazel build configuration          |
-| `testing/`      | Test utilities                     |
-| `examples/`     | Example agent code                 |
+</details>
 
 ## License
 
@@ -137,11 +85,3 @@ See [LICENSE](LICENSE) for full details.
 Based on [DeepMind Lab](https://github.com/google-deepmind/lab) by DeepMind.
 
 If you use DeepMind Lab in your research, please cite the [DeepMind Lab paper](https://arxiv.org/abs/1612.03801).
-
-## Upstream Sources
-
-DeepMind Lab is built from the following open source projects:
-
-- [ioquake3](https://github.com/ioquake/ioq3) -- game engine
-- [bspc](https://github.com/TTimo/bspc) -- bot route compilation
-- [GtkRadiant / q3map2](https://github.com/TTimo/GtkRadiant) -- map compilation

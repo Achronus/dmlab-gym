@@ -57,7 +57,7 @@ $ dmlab-gym build
 
 Building deepmind-lab (podman)
   Source: /home/user/.local/share/dmlab-gym/source
-  Output: /tmp/dmlab_pkg
+  Output: /home/user/my-project/lab
 
   ✓ Building container image
   ✓ Compiling native extension (this may take a while)

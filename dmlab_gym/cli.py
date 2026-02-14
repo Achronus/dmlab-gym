@@ -7,8 +7,8 @@ import sys
 import threading
 from pathlib import Path
 
-# Default output directory for the wheel.
-DEFAULT_OUTPUT_DIR = "/tmp/dmlab_pkg"
+# Default output directory for the wheel (relative to cwd).
+DEFAULT_OUTPUT_DIR = "./lab"
 
 # Container image name used for building.
 IMAGE_NAME = "dmlab-builder"

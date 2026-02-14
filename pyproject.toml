@@ -27,3 +27,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["dmlab_gym"]
+
+[tool.hatch.build.targets.sdist]
+include = ["dmlab_gym/", "README.md", "LICENSE", "pyproject.toml"]

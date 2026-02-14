@@ -1,6 +1,6 @@
 [project]
 name = "dmlab-gym"
-version = "0.1.0"
+version = "0.1.1"
 description = "DeepMind Lab with Bazel 8, Python 3.13, and Gymnasium/Shimmy support"
 readme = "README.md"
 requires-python = ">=3.13"

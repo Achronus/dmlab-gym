@@ -39,7 +39,15 @@ The engine builds inside a container (Podman or Docker). The resulting wheel ins
 
 </details>
 
-## Building
+## Installation
+
+```bash
+pip install dmlab-gym
+```
+
+## Building the Native Extension
+
+After installing, build the DeepMind Lab native extension:
 
 ### Quick Start
 

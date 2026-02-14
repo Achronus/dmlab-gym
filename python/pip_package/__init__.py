@@ -26,7 +26,7 @@ import os
 
 from deepmind_lab import dmenv_module
 
-_so_path = os.path.join(os.path.dirname(__file__), 'deepmind_lab.so')
+_so_path = os.path.join(os.path.dirname(__file__), '_main', 'deepmind_lab.so')
 _spec = importlib.util.spec_from_file_location(__name__, _so_path)
 _deepmind_lab = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_deepmind_lab)

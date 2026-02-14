@@ -15,8 +15,79 @@ The engine builds inside a Podman container. The resulting wheel installs into a
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) (Python environment management)
-- [Podman](https://podman.io/) (container builds)
+- [Podman](https://podman.io/) or [Docker](https://www.docker.com/) (container builds)
 - Python 3.13+
+- OSMesa (runtime dependency for headless rendering)
+
+Install OSMesa for your distribution:
+
+| Distribution | Command |
+|---|---|
+| Fedora / RHEL | `sudo dnf install mesa-libOSMesa` or `mesa-compat-libOSMesa` |
+| Bluefin / immutable | `rpm-ostree install mesa-compat-libOSMesa` (reboot required) |
+| Ubuntu / Debian | `sudo apt install libosmesa6` |
+| Arch | `sudo pacman -S mesa` |
+
+## Building
+
+### Quick Start
+
+```bash
+./build_wheel.sh              # builds to /tmp/dmlab_pkg/
+./build_wheel.sh ~/my_output  # or specify a custom output directory
+```
+
+The script auto-detects Podman or Docker and handles the container build + wheel packaging.
+
+### Install the Wheel
+
+```bash
+uv pip install /tmp/dmlab_pkg/deepmind_lab-1.0-py3-none-any.whl
+```
+
+### Verify
+
+```bash
+uv run python -c "import deepmind_lab; print('OK')"
+```
+
+### Manual Build
+
+If you prefer to run the steps yourself:
+
+**Podman:**
+
+```bash
+podman build -t dmlab-builder -f Dockerfile.build .
+
+mkdir -p /tmp/dmlab_pkg
+podman run --rm \
+    -v ./:/build/lab:Z \
+    -v /tmp/dmlab_pkg:/output:Z \
+    dmlab-builder \
+    bash -c "
+        bazel build -c opt //python/pip_package:build_pip_package \
+            --define headless=osmesa && \
+        ./bazel-bin/python/pip_package/build_pip_package /output
+    "
+```
+
+**Docker:**
+
+```bash
+docker build -t dmlab-builder -f Dockerfile.build .
+
+mkdir -p /tmp/dmlab_pkg
+docker run --rm \
+    -v ./:/build/lab \
+    -v /tmp/dmlab_pkg:/output \
+    dmlab-builder \
+    bash -c "
+        bazel build -c opt //python/pip_package:build_pip_package \
+            --define headless=osmesa && \
+        ./bazel-bin/python/pip_package/build_pip_package /output
+    "
+```
 
 ## Project Structure
 

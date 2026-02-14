@@ -1,18 +1,12 @@
 [project]
 name = "dmlab-gym"
-version = "0.1.1"
+version = "0.1.2"
 description = "DeepMind Lab with Bazel 8, Python 3.13, and Gymnasium/Shimmy support"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "GPL-2.0-only"
-authors = [
-    { name = "Achronus" },
-]
-dependencies = [
-    "gymnasium>=1.2.3",
-    "numpy>=2.4.2",
-    "shimmy[dm-lab]>=2.0.0",
-]
+authors = [{ name = "Achronus" }]
+dependencies = ["gymnasium>=1.2.3", "numpy>=2.4.2", "shimmy[dm-lab]>=2.0.0"]
 
 [project.scripts]
 dmlab-gym = "dmlab_gym.cli:main"

@@ -1,0 +1,38 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# System build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    freeglut3 \
+    gettext \
+    git \
+    g++ \
+    libffi-dev \
+    libglu1-mesa \
+    libglu1-mesa-dev \
+    libjpeg-dev \
+    liblua5.1-0-dev \
+    libosmesa6-dev \
+    libsdl2-dev \
+    lua5.1 \
+    pkg-config \
+    software-properties-common \
+    unzip \
+    zip \
+    zlib1g-dev \
+    python3-dev \
+    python3-numpy \
+    python3-pip \
+    python3-setuptools \
+    python3-wheel \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bazelisk as "bazel"
+RUN curl -L -o /usr/local/bin/bazel \
+    https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64 \
+    && chmod +x /usr/local/bin/bazel
+
+WORKDIR /build/lab

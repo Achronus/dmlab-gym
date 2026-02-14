@@ -11,10 +11,6 @@ py_library(
         "dm_env/specs.py",
     ],
     visibility = ["//visibility:public"],
-    deps = [
-        "@funcsigs_archive//:funcsigs",
-        "@six_archive//:six",
-    ],
 )
 
 py_library(

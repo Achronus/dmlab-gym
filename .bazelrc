@@ -1,0 +1,4 @@
+# DMLab uses WORKSPACE-based dependency management.
+# WORKSPACE is deprecated in Bazel 8 but functional with this flag.
+# Plan to migrate to Bzlmod before Bazel 9 if continued development is needed.
+build --enable_workspace

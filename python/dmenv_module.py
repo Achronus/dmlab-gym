@@ -13,12 +13,13 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Modified by Achronus, 2025. Changes: removed six/Python 2 compatibility.
 
 """A DeepMind Lab Python module that implements DeepMind's dm_env API."""
 
 import dm_env
 import numpy as np
-import six
 import deepmind_lab
 
 
@@ -64,7 +65,7 @@ class Lab(dm_env.Environment):
   def _observation(self):
     return {
         name: np.asarray(data, dtype=self._observation_spec[name].dtype)
-        for name, data in six.iteritems(self._lab.observations())
+        for name, data in self._lab.observations().items()
     }
 
   def reset(self):
@@ -77,7 +78,7 @@ class Lab(dm_env.Environment):
       return self.reset()
 
     lab_action = np.empty(self._action_count, dtype=np.dtype("int32"))
-    for name, value in six.iteritems(action):
+    for name, value in action.items():
       lab_action[self._action_map[name]] = value
 
     reward = self._lab.step(lab_action)

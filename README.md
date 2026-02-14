@@ -10,30 +10,108 @@ DeepMind Lab is a 3D learning environment based on id Software's Quake III Arena
 - **Python 3.13** C extension and package support
 - **Gymnasium/Shimmy** wrapper for standard RL interfaces
 
-The engine builds inside a Podman container. The resulting wheel installs into a host-side `uv` environment.
+The engine builds inside a container (Podman or Docker). The resulting wheel installs into a host-side `uv` environment.
+
+## Platform Support
+
+| Platform       | Status        |
+| -------------- | ------------- |
+| Linux (x86_64) | Supported     |
+| macOS          | Not supported |
+| Windows        | Not supported |
 
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) (Python environment management)
-- [Podman](https://podman.io/) (container builds)
+- [Podman](https://podman.io/) or [Docker](https://www.docker.com/) (container builds)
 - Python 3.13+
+- OSMesa (runtime dependency for headless rendering) — installed automatically by `dmlab-gym build` if missing
+
+<details>
+<summary>Manual OSMesa install</summary>
+
+| Distribution        | Command                                                                 |
+| ------------------- | ----------------------------------------------------------------------- |
+| Fedora / RHEL       | `sudo dnf install mesa-libOSMesa` or `mesa-compat-libOSMesa`            |
+| Bluefin / immutable | `sudo dnf install --transient mesa-compat-libOSMesa` (resets on reboot) |
+| Ubuntu / Debian     | `sudo apt install libosmesa6`                                           |
+| Arch                | `sudo pacman -S mesa`                                                   |
+
+</details>
+
+## Building
+
+### Quick Start
+
+```bash
+dmlab-gym build                        # build and install deepmind-lab
+dmlab-gym build -o ~/my_output         # custom output directory
+dmlab-gym build --no-install           # build only, skip install
+```
+
+This auto-detects Podman or Docker, builds the native extension inside a container, and installs the resulting wheel into your current environment.
+
+### Verify
+
+```bash
+python -c "import deepmind_lab; print('OK')"
+```
+
+### Manual Build
+
+If you prefer to run the steps yourself:
+
+**Podman:**
+
+```bash
+podman build -t dmlab-builder -f Dockerfile.build .
+
+mkdir -p /tmp/dmlab_pkg
+podman run --rm \
+    -v ./:/build/lab:Z \
+    -v /tmp/dmlab_pkg:/output:Z \
+    dmlab-builder \
+    bash -c "
+        bazel build -c opt //python/pip_package:build_pip_package \
+            --define headless=osmesa && \
+        ./bazel-bin/python/pip_package/build_pip_package /output
+    "
+```
+
+**Docker:**
+
+```bash
+docker build -t dmlab-builder -f Dockerfile.build .
+
+mkdir -p /tmp/dmlab_pkg
+docker run --rm \
+    -v ./:/build/lab \
+    -v /tmp/dmlab_pkg:/output \
+    dmlab-builder \
+    bash -c "
+        bazel build -c opt //python/pip_package:build_pip_package \
+            --define headless=osmesa && \
+        ./bazel-bin/python/pip_package/build_pip_package /output
+    "
+```
 
 ## Project Structure
 
-| Directory | Description |
-|-----------|-------------|
-| `engine/` | ioquake3 game engine (GPLv2) |
-| `q3map2/` | Map compilation tools (GPLv2) |
-| `assets/` | DeepMind Lab assets (CC BY 4.0) |
-| `assets_oa/` | Open Arena assets (GPLv2) |
-| `game_scripts/` | Lua game/level scripts |
-| `python/` | Python C extension and pip package |
-| `deepmind/` | Core DeepMind Lab code |
-| `public/` | Public API headers |
-| `third_party/` | Vendored dependencies |
-| `bazel/` | Bazel build configuration |
-| `testing/` | Test utilities |
-| `examples/` | Example agent code |
+| Directory       | Description                        |
+| --------------- | ---------------------------------- |
+| `engine/`       | ioquake3 game engine (GPLv2)       |
+| `q3map2/`       | Map compilation tools (GPLv2)      |
+| `assets/`       | DeepMind Lab assets (CC BY 4.0)    |
+| `assets_oa/`    | Open Arena assets (GPLv2)          |
+| `game_scripts/` | Lua game/level scripts             |
+| `python/`       | Python C extension and pip package |
+| `deepmind/`     | Core DeepMind Lab code             |
+| `public/`       | Public API headers                 |
+| `third_party/`  | Vendored dependencies              |
+| `dmlab_gym/`    | Python package (CLI, utilities)    |
+| `bazel/`        | Bazel build configuration          |
+| `testing/`      | Test utilities                     |
+| `examples/`     | Example agent code                 |
 
 ## License
 

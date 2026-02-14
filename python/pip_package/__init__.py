@@ -21,11 +21,20 @@ is accessible this way. Use the module as follows:
   # ...
 """
 
-import imp
-from deepmind_lab import dmenv_module
-import pkg_resources
+import importlib.util
+import os
+import sys
 
-_deepmind_lab = imp.load_dynamic(
-    __name__, pkg_resources.resource_filename(__name__, 'deepmind_lab.so'))
+_so_path = os.path.join(os.path.dirname(__file__), '_main', 'deepmind_lab.so')
+_spec = importlib.util.spec_from_file_location(__name__, _so_path)
+_deepmind_lab = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_deepmind_lab)
 
-Lab = _deepmind_lab.Lab  # needed from within dmenv_module
+# The C extension's Lab.__init__ calls PyImport_AddModule("deepmind_lab") to
+# retrieve module state (runfiles_path). That looks up sys.modules, which
+# currently points at this package. Replace it with the .so module so the
+# C code finds the correct module state.
+_deepmind_lab.__path__ = __path__  # preserve package path for submodule imports
+sys.modules[__name__] = _deepmind_lab
+
+from deepmind_lab import dmenv_module  # noqa: E402 - must come after sys.modules swap

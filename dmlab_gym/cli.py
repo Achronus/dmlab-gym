@@ -4,6 +4,7 @@ import argparse
 import shutil
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 # Default output directory for the wheel.
@@ -12,13 +13,63 @@ DEFAULT_OUTPUT_DIR = "/tmp/dmlab_pkg"
 # Container image name used for building.
 IMAGE_NAME = "dmlab-builder"
 
+# Source repo for cloning.
+REPO_URL = "https://github.com/Achronus/dmlab-gym.git"
+
+# Cached clone location.
+CACHE_DIR = Path.home() / ".local" / "share" / "dmlab-gym"
+
+# Spinner characters.
+_SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+
+def _run_with_spinner(
+    cmd: list[str],
+    label: str,
+    *,
+    capture_errors: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    """Run a command with a spinner, suppressing stdout.
+
+    Stderr is captured and only shown if the command fails.
+    """
+    stop = threading.Event()
+
+    def spin():
+        i = 0
+        while not stop.is_set():
+            print(f"\r  {_SPINNER[i % len(_SPINNER)]} {label}", end="", flush=True)
+            i += 1
+            stop.wait(0.1)
+
+    spinner = threading.Thread(target=spin, daemon=True)
+    spinner.start()
+
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE if capture_errors else subprocess.DEVNULL,
+        text=True,
+    )
+
+    stop.set()
+    spinner.join()
+
+    if result.returncode != 0:
+        print(f"\r  x {label} — failed", flush=True)
+        if capture_errors and result.stderr:
+            print(result.stderr, file=sys.stderr)
+        sys.exit(1)
+
+    print(f"\r  ✓ {label}", flush=True)
+    return result
+
 
 def _find_runtime() -> tuple[str, str]:
     """Detect podman or docker and return (runtime, volume_flag)."""
     for name, flag in [("podman", ":Z"), ("docker", "")]:
         if not shutil.which(name):
             continue
-        # Check the daemon/service is actually running.
         result = subprocess.run(
             [name, "info"],
             stdout=subprocess.DEVNULL,
@@ -40,21 +91,50 @@ def _find_runtime() -> tuple[str, str]:
 
 
 def _project_root() -> Path:
-    """Return the project root (where Dockerfile.build lives)."""
-    # Walk up from this file to find the repo root.
+    """Return the project root (where Dockerfile.build lives).
+
+    Search order:
+      1. Parent of this file (editable / dev install).
+      2. Current working directory.
+      3. Cached clone at ~/.local/share/dmlab-gym/source.
+         Clones the repo if not present, pulls if it is.
+    """
+    # 1. Dev install — source tree contains the package.
     path = Path(__file__).resolve().parent.parent
     if (path / "Dockerfile.build").exists():
         return path
-    # Fallback: cwd
+
+    # 2. CWD is the repo root.
     cwd = Path.cwd()
     if (cwd / "Dockerfile.build").exists():
         return cwd
-    print(
-        "Error: cannot find Dockerfile.build. "
-        "Run this from the dmlab-gym repo root.",
-        file=sys.stderr,
+
+    # 3. Cached clone.
+    source = CACHE_DIR / "source"
+    if (source / "Dockerfile.build").exists():
+        _run_with_spinner(
+            ["git", "-C", str(source), "pull", "--ff-only"],
+            "Updating cached source",
+        )
+        return source
+
+    # Clone fresh.
+    if not shutil.which("git"):
+        print(
+            "Error: cannot find the dmlab-gym source tree and git is not "
+            "installed to clone it.\nEither run from the repo root or "
+            "install git.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    source.parent.mkdir(parents=True, exist_ok=True)
+    _run_with_spinner(
+        ["git", "clone", "--depth", "1", REPO_URL, str(source)],
+        "Cloning dmlab-gym source",
     )
-    sys.exit(1)
+
+    return source
 
 
 def _ensure_osmesa() -> None:
@@ -69,7 +149,6 @@ def _ensure_osmesa() -> None:
 
     print("libOSMesa.so.8 not found. Attempting transient install...")
 
-    # Detect the package manager and install command.
     if shutil.which("dnf"):
         cmd = ["sudo", "dnf", "install", "-y", "--transient", "mesa-compat-libOSMesa"]
     elif shutil.which("apt-get"):
@@ -89,7 +168,6 @@ def _ensure_osmesa() -> None:
         print("Error: failed to install OSMesa.", file=sys.stderr)
         sys.exit(1)
 
-    # Verify it actually worked.
     try:
         ctypes.CDLL("libOSMesa.so.8")
         print("OSMesa installed successfully.")
@@ -109,20 +187,20 @@ def cmd_build(args: argparse.Namespace) -> None:
     root = _project_root()
     output = Path(args.output).resolve()
 
-    print(f"Using container runtime: {runtime}")
-    print(f"Project root: {root}")
-    print(f"Output directory: {output}")
-
     output.mkdir(parents=True, exist_ok=True)
 
+    print(f"\nBuilding deepmind-lab ({runtime})")
+    print(f"  Source: {root}")
+    print(f"  Output: {output}\n")
+
     # Build the container image.
-    subprocess.run(
+    _run_with_spinner(
         [runtime, "build", "-t", IMAGE_NAME, "-f", str(root / "Dockerfile.build"), str(root)],
-        check=True,
+        "Building container image",
     )
 
     # Run the build inside the container.
-    subprocess.run(
+    _run_with_spinner(
         [
             runtime, "run", "--rm",
             "-v", f"{root}:/build/lab{volume_flag}",
@@ -133,7 +211,7 @@ def cmd_build(args: argparse.Namespace) -> None:
             "--define headless=osmesa && "
             "./bazel-bin/python/pip_package/build_pip_package /output",
         ],
-        check=True,
+        "Compiling native extension (this may take a while)",
     )
 
     wheels = list(output.glob("*.whl"))
@@ -142,19 +220,35 @@ def cmd_build(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     wheel = wheels[0]
-    print(f"\nWheel built: {wheel}")
 
     # Install the wheel.
     if args.no_install:
-        print("Skipping install (--no-install).")
+        print(f"\nWheel built: {wheel}")
         return
 
-    print("Installing wheel...")
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--force-reinstall", str(wheel)],
-        check=True,
+    if shutil.which("uv"):
+        install_cmd = ["uv", "pip", "install", "--upgrade", "--force-reinstall", str(wheel)]
+    else:
+        install_cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "--force-reinstall", str(wheel)]
+
+    _run_with_spinner(install_cmd, "Installing wheel")
+
+    # Verify the import works.
+    result = subprocess.run(
+        [sys.executable, "-c", "import deepmind_lab"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
     )
-    print("Done. deepmind-lab is installed.")
+    if result.returncode == 0:
+        print("  ✓ deepmind_lab is importable")
+    else:
+        print("  x deepmind_lab import failed", file=sys.stderr)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+        sys.exit(1)
+
+    print(f"\n  Done! deepmind-lab installed from {wheel.name}")
 
 
 def main() -> None:

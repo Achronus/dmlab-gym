@@ -56,6 +56,14 @@ def rgbd_env():
 
 
 @pytest.fixture
+def render_env():
+    """RGB_INTERLEAVED environment with render_mode='rgb_array'."""
+    e = gym.make(ENV_ID, render_mode="rgb_array")
+    yield e
+    e.close()
+
+
+@pytest.fixture
 def vec_env():
     """Vectorized RGB_INTERLEAVED environment (2 envs)."""
     ve = gym.make_vec(ENV_ID, num_envs=2)

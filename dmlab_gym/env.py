@@ -86,11 +86,11 @@ class DmLabEnv(gym.Env):
         height: Observation pixel height.
         fps: Frames per second.
         max_num_steps: Maximum steps per episode (0 = unlimited).
-        render_mode: Gymnasium render mode (unused, reserved for compatibility).
+        render_mode: ``"rgb_array"`` to enable ``render()`` (returns last RGB frame).
         **config: Extra key-value config forwarded to ``deepmind_lab.Lab``.
     """
 
-    metadata: dict = {"render_modes": []}
+    metadata: dict = {"render_modes": ["rgb_array"], "render_fps": 60}
 
     def __init__(
         self,
@@ -115,6 +115,7 @@ class DmLabEnv(gym.Env):
         self._single_obs = len(observations) == 1
         self._max_num_steps = max_num_steps
         self._num_steps = 0
+        self._last_obs = None
         self.render_mode = render_mode
 
         lab_config = {"width": str(width), "height": str(height), "fps": str(fps)}
@@ -180,6 +181,19 @@ class DmLabEnv(gym.Env):
 
         obs = self._obs() if not terminated else self._last_obs
         return obs, reward, terminated, truncated, {}
+
+    def render(self) -> np.ndarray | None:
+        if self.render_mode != "rgb_array":
+            return None
+        if self._last_obs is None:
+            return None
+        if self._single_obs:
+            return self._last_obs
+        for name in ("RGB_INTERLEAVED", "RGBD_INTERLEAVED", "RGBD"):
+            if name in self._last_obs:
+                frame = self._last_obs[name]
+                return frame[..., :3] if frame.shape[-1] == 4 else frame
+        return next(iter(self._last_obs.values()))
 
     def close(self) -> None:
         self._lab.close()

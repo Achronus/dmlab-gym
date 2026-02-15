@@ -189,8 +189,8 @@ All standard [Gymnasium wrappers](https://gymnasium.farama.org/main/api/wrappers
 | `NormalizeReward`         | Yes        | Normalise rewards via running stats                    |
 | `TransformReward`         | Yes        | Custom reward function                                 |
 | `RecordEpisodeStatistics` | Yes        | Track episode returns and lengths                      |
-| `RecordVideo`             | No         | No render modes supported                              |
-| `HumanRendering`          | No         | No render modes supported                              |
+| `RecordVideo`             | Yes        | Requires `render_mode="rgb_array"` and `moviepy`       |
+| `HumanRendering`          | Yes        | Requires `render_mode="rgb_array"` and `pygame`        |
 | `FilterObservation`       | No         | Box observation space (not Dict)                       |
 | `ClipAction`              | Yes        | Clips actions to Box bounds                            |
 | `RescaleAction`           | No         | Float rescaling produces NaN with integer action space |

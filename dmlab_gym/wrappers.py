@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import multiprocessing
+import traceback
+from typing import Any, Callable
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -53,29 +57,41 @@ class SplitRGBD(gym.ObservationWrapper):
         if self._channels_first:
             rgb_shape = (3, *shape[1:])
             depth_shape = (1, *shape[1:])
-            self.observation_space = spaces.Dict({
-                "RGB": spaces.Box(
-                    obs_space.low[:3], obs_space.high[:3],
-                    shape=rgb_shape, dtype=obs_space.dtype,
-                ),
-                "Depth": spaces.Box(
-                    obs_space.low[3:], obs_space.high[3:],
-                    shape=depth_shape, dtype=obs_space.dtype,
-                ),
-            })
+            self.observation_space = spaces.Dict(
+                {
+                    "RGB": spaces.Box(
+                        obs_space.low[:3],
+                        obs_space.high[:3],
+                        shape=rgb_shape,
+                        dtype=obs_space.dtype,
+                    ),
+                    "Depth": spaces.Box(
+                        obs_space.low[3:],
+                        obs_space.high[3:],
+                        shape=depth_shape,
+                        dtype=obs_space.dtype,
+                    ),
+                }
+            )
         else:
             rgb_shape = (*shape[:-1], 3)
             depth_shape = (*shape[:-1], 1)
-            self.observation_space = spaces.Dict({
-                "RGB": spaces.Box(
-                    obs_space.low[..., :3], obs_space.high[..., :3],
-                    shape=rgb_shape, dtype=obs_space.dtype,
-                ),
-                "Depth": spaces.Box(
-                    obs_space.low[..., 3:], obs_space.high[..., 3:],
-                    shape=depth_shape, dtype=obs_space.dtype,
-                ),
-            })
+            self.observation_space = spaces.Dict(
+                {
+                    "RGB": spaces.Box(
+                        obs_space.low[..., :3],
+                        obs_space.high[..., :3],
+                        shape=rgb_shape,
+                        dtype=obs_space.dtype,
+                    ),
+                    "Depth": spaces.Box(
+                        obs_space.low[..., 3:],
+                        obs_space.high[..., 3:],
+                        shape=depth_shape,
+                        dtype=obs_space.dtype,
+                    ),
+                }
+            )
 
     def observation(self, observation: np.ndarray) -> dict[str, np.ndarray]:
         if self._channels_first:
@@ -111,3 +127,168 @@ class ActionDiscretize(gym.ActionWrapper):
 
     def action(self, action: int) -> np.ndarray:
         return self._action_table[action]
+
+
+def _get_mp_context() -> Any:
+    """Return a safe multiprocessing context.
+
+    Prefers ``forkserver`` (avoids copying parent address space, safer with
+    shared libraries like the DMLab C extension) and falls back to ``spawn``.
+    """
+    for method in ("forkserver", "spawn"):
+        try:
+            return multiprocessing.get_context(method)
+        except ValueError:
+            continue
+    return multiprocessing.get_context()
+
+
+def _worker(pipe: Any, env_fn_bytes: bytes) -> None:
+    """Child-process event loop that owns a single Gymnasium environment."""
+    import pickle
+
+    env: gym.Env | None = None
+    try:
+        env_fn: Callable[[], gym.Env] = pickle.loads(env_fn_bytes)
+        env = env_fn()
+
+        # Send spaces back to parent so it can expose them.
+        pipe.send(("spaces", env.observation_space, env.action_space))
+
+        while True:
+            cmd, data = pipe.recv()
+
+            if cmd == "reset":
+                result = env.reset(**data)
+                pipe.send(("ok", result))
+
+            elif cmd == "step":
+                result = env.step(data)
+                pipe.send(("ok", result))
+
+            elif cmd == "close":
+                pipe.send(("ok", None))
+                break
+
+            else:
+                raise RuntimeError(f"Unknown command: {cmd!r}")
+
+    except Exception:
+        tb = traceback.format_exc()
+        try:
+            pipe.send(("error", tb))
+        except BrokenPipeError:
+            pass
+    finally:
+        if env is not None:
+            env.close()
+        pipe.close()
+
+
+class SubprocessEnv(gym.Env):
+    """Run a single Gymnasium environment in a dedicated subprocess.
+
+    This is necessary for environments backed by C engines with global state
+    (like DMLab's Quake 3 engine) where only one instance can exist per
+    process. Each ``SubprocessEnv`` gets its own address space.
+
+    Args:
+        env_or_fn: Either a registered environment ID (``str``) or a
+            zero-argument callable that returns a ``gym.Env``.
+
+    Example::
+
+        env = SubprocessEnv("dmlab_gym/lt_chasm-v0")
+        obs, info = env.reset(seed=42)
+        obs, reward, terminated, truncated, info = env.step(action)
+        env.close()
+    """
+
+    def __init__(self, env_or_fn: str | Callable[[], gym.Env]) -> None:
+        super().__init__()
+
+        self._closed = True
+        self._parent_pipe = None
+        self._process = None
+
+        if isinstance(env_or_fn, str):
+            env_id = env_or_fn
+            spec = gym.spec(env_id)
+            entry_point = spec.entry_point
+            spec_kwargs = dict(spec.kwargs) if spec.kwargs else {}
+
+            def env_fn() -> gym.Env:
+                if env_id not in gym.registry:
+                    gym.register(
+                        id=env_id,
+                        entry_point=entry_point,
+                        kwargs=spec_kwargs,
+                    )
+                return gym.make(env_id)
+        else:
+            env_fn = env_or_fn
+
+        import cloudpickle
+
+        env_fn_bytes = cloudpickle.dumps(env_fn)
+
+        ctx = _get_mp_context()
+        self._parent_pipe, child_pipe = ctx.Pipe()
+        self._process = ctx.Process(
+            target=_worker,
+            args=(child_pipe, env_fn_bytes),
+            daemon=True,
+        )
+        self._process.start()
+        child_pipe.close()
+
+        self._closed = False
+
+        msg = self._parent_pipe.recv()
+        if msg[0] == "error":
+            self.close()
+            raise RuntimeError(
+                f"Environment subprocess failed during init:\n{msg[1]}"
+            )
+        _, self.observation_space, self.action_space = msg
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict | None = None,
+    ) -> tuple[Any, dict]:
+        return self._call("reset", {"seed": seed, "options": options})
+
+    def step(self, action: Any) -> tuple[Any, float, bool, bool, dict]:
+        return self._call("step", action)
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        if self._parent_pipe is not None:
+            try:
+                self._parent_pipe.send(("close", None))
+                self._parent_pipe.recv()
+            except (BrokenPipeError, EOFError, OSError):
+                pass
+            finally:
+                self._parent_pipe.close()
+        if self._process is not None:
+            self._process.join(timeout=5)
+            if self._process.is_alive():
+                self._process.terminate()
+                self._process.join(timeout=2)
+
+    def __del__(self) -> None:
+        self.close()
+
+    def _call(self, cmd: str, data: Any) -> Any:
+        if self._closed:
+            raise RuntimeError("Environment is closed")
+        self._parent_pipe.send((cmd, data))
+        tag, result = self._parent_pipe.recv()
+        if tag == "error":
+            raise RuntimeError(f"Environment subprocess error:\n{result}")
+        return result

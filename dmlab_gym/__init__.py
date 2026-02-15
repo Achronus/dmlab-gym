@@ -3,7 +3,7 @@
 import gymnasium as gym
 
 from dmlab_gym.env import DmLabEnv, _DMLAB30_LEVELS
-from dmlab_gym.wrappers import ActionDiscretize, SplitRGBD
+from dmlab_gym.wrappers import ActionDiscretize, SplitRGBD, SubprocessEnv
 
 CORE_LEVELS: list[str] = [
     "lt_chasm",
@@ -31,6 +31,7 @@ __all__ = [
     "DMLAB30_LEVELS",
     "DmLabEnv",
     "SplitRGBD",
+    "SubprocessEnv",
     "register",
 ]
 
@@ -47,9 +48,10 @@ def register(level_name: str, *, version: int = 0, **kwargs: str) -> str:
         The registered environment ID.
     """
     env_id = f"dmlab_gym/{level_name}-v{version}"
-    gym.register(
-        id=env_id,
-        entry_point="dmlab_gym.env:DmLabEnv",
-        kwargs={"level_name": level_name, **kwargs},
-    )
+    if env_id not in gym.registry:
+        gym.register(
+            id=env_id,
+            entry_point="dmlab_gym.env:DmLabEnv",
+            kwargs={"level_name": level_name, **kwargs},
+        )
     return env_id

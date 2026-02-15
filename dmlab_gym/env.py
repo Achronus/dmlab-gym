@@ -2,9 +2,30 @@
 
 from __future__ import annotations
 
+import contextlib
+import os
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
+
+
+@contextlib.contextmanager
+def _suppress_c_output():
+    """Redirect C-level stdout/stderr to /dev/null."""
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    old_stdout = os.dup(1)
+    old_stderr = os.dup(2)
+    try:
+        os.dup2(devnull, 1)
+        os.dup2(devnull, 2)
+        yield
+    finally:
+        os.dup2(old_stdout, 1)
+        os.dup2(old_stderr, 2)
+        os.close(old_stdout)
+        os.close(old_stderr)
+        os.close(devnull)
 
 # DMLab-30 levels require a path prefix internally.  This mapping lets users
 # pass just the bare name (e.g. ``"explore_goal_locations_large"``) and have
@@ -99,12 +120,13 @@ class DmLabEnv(gym.Env):
         lab_config = {"width": str(width), "height": str(height), "fps": str(fps)}
         lab_config.update({k: str(v) for k, v in config.items()})
 
-        self._lab = deepmind_lab.Lab(
-            _resolve_level(level_name),
-            observations,
-            config=lab_config,
-            renderer=renderer,
-        )
+        with _suppress_c_output():
+            self._lab = deepmind_lab.Lab(
+                _resolve_level(level_name),
+                observations,
+                config=lab_config,
+                renderer=renderer,
+            )
 
         # Build observation space from engine specs.
         obs_specs = {s["name"]: s for s in self._lab.observation_spec()}
@@ -139,7 +161,8 @@ class DmLabEnv(gym.Env):
     ) -> tuple[np.ndarray | dict[str, np.ndarray], dict]:
         super().reset(seed=seed, options=options)
         self._num_steps = 0
-        self._lab.reset(seed=seed if seed is not None else -1)
+        with _suppress_c_output():
+            self._lab.reset(seed=seed if seed is not None else -1)
         return self._obs(), {}
 
     def step(

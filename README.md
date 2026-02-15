@@ -1,18 +1,30 @@
 # dmlab-gym
 
-A fork of [DeepMind Lab](https://github.com/google-deepmind/lab) updated for Bazel 8, Python 3.13, and wrapped with [Gymnasium](https://gymnasium.farama.org/) via [Shimmy](https://shimmy.farama.org/).
+A [Gymnasium](https://gymnasium.farama.org/) port of [DeepMind Lab](https://github.com/google-deepmind/lab) — 44 first-person 3D environments for Reinforcement Learning research, updated for Bazel 8 and Python 3.13.
 
-## What This Is
+[[Original Paper]](https://arxiv.org/abs/1612.03801)
 
-DeepMind Lab is a 3D learning environment based on id Software's Quake III Arena. This fork modernizes the build toolchain so it compiles and runs on current systems:
+## What is this?
 
-- **Bazel 8** with `--enable_workspace` compatibility
-- **Python 3.13** C extension and package support
-- **Gymnasium/Shimmy** wrapper for standard RL interfaces
+This project wraps the original [DeepMind Lab](https://github.com/google-deepmind/lab) C engine (Quake 3 based) as standard [Gymnasium](https://gymnasium.farama.org/) environments.
 
-The engine builds inside a container (Podman or Docker). The resulting wheel installs into a host-side `uv` environment.
+The C game code remains **unchanged** with deprecation warnings removed. This package only adds a Python interface layer around it.
 
-## Platform Support
+### Key features
+
+- Standard `gym.make()` API for all 44 levels
+- Compatible with all standard Gymnasium wrappers
+- Vectorized environments via `gym.make_vec()`
+- Python 3.13+ support
+- Managed with `uv` and `pyproject.toml`
+
+## Installation
+
+```bash
+pip install dmlab-gym
+```
+
+**Requirements:** Python 3.13+ (64-bit), Linux x86_64.
 
 | Platform       | Status        |
 | -------------- | ------------- |
@@ -24,7 +36,6 @@ The engine builds inside a container (Podman or Docker). The resulting wheel ins
 
 - [uv](https://docs.astral.sh/uv/) (Python environment management)
 - [Podman](https://podman.io/) or [Docker](https://www.docker.com/) (container builds)
-- Python 3.13+
 - OSMesa (runtime dependency for headless rendering) — installed automatically by `dmlab-gym build` if missing
 
 <details>
@@ -39,17 +50,9 @@ The engine builds inside a container (Podman or Docker). The resulting wheel ins
 
 </details>
 
-## Installation
-
-```bash
-pip install dmlab-gym
-```
-
 ## Building the Native Extension
 
 After installing, build the DeepMind Lab native extension:
-
-### Quick Start
 
 ```bash
 dmlab-gym build                        # build and install deepmind-lab
@@ -57,69 +60,140 @@ dmlab-gym build -o ~/my_output         # custom output directory
 dmlab-gym build --no-install           # build only, skip install
 ```
 
-This auto-detects Podman or Docker, builds the native extension inside a container, and installs the resulting wheel into your current environment.
+This auto-detects Podman or Docker, builds the native extension inside a container, installs the wheel, and verifies the import automatically.
 
-### Verify
+<details>
+<summary>Example output</summary>
 
-```bash
-python -c "import deepmind_lab; print('OK')"
+```
+$ dmlab-gym build
+
+Building deepmind-lab (podman)
+  Source: /home/user/.local/share/dmlab-gym/source
+  Output: /home/user/my-project/lab
+
+  ✓ Building container image
+  ✓ Compiling native extension (this may take a while)
+  ✓ Installing wheel
+  ✓ deepmind_lab is importable
+
+  Done! deepmind-lab installed from deepmind_lab-1.0-py3-none-any.whl
 ```
 
-### Manual Build
+</details>
 
-If you prefer to run the steps yourself:
+## Quick Start
 
-**Podman:**
+### Single environment (standard Gymnasium API)
 
-```bash
-podman build -t dmlab-builder -f Dockerfile.build .
+```python
+import gymnasium as gym
+import dmlab_gym  # auto-registers all 44 levels
 
-mkdir -p /tmp/dmlab_pkg
-podman run --rm \
-    -v ./:/build/lab:Z \
-    -v /tmp/dmlab_pkg:/output:Z \
-    dmlab-builder \
-    bash -c "
-        bazel build -c opt //python/pip_package:build_pip_package \
-            --define headless=osmesa && \
-        ./bazel-bin/python/pip_package/build_pip_package /output
-    "
+env = gym.make("dmlab_gym/lt_chasm-v0")
+obs, info = env.reset()
+
+for _ in range(1000):
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+    if terminated or truncated:
+        obs, info = env.reset()
+
+env.close()
 ```
 
-**Docker:**
+### Vectorized environments (parallel training)
 
-```bash
-docker build -t dmlab-builder -f Dockerfile.build .
+DMLab's C engine only supports one instance per process. Use `gym.make_vec` to run N copies in separate subprocesses — each gets its own memory-isolated process and stays alive between steps:
 
-mkdir -p /tmp/dmlab_pkg
-docker run --rm \
-    -v ./:/build/lab \
-    -v /tmp/dmlab_pkg:/output \
-    dmlab-builder \
-    bash -c "
-        bazel build -c opt //python/pip_package:build_pip_package \
-            --define headless=osmesa && \
-        ./bazel-bin/python/pip_package/build_pip_package /output
-    "
+```python
+import gymnasium as gym
+import dmlab_gym
+
+vec_env = gym.make_vec(
+    "dmlab_gym/lt_chasm-v0",
+    num_envs=8,
+    vectorization_mode="async",
+)
+
+obs, infos = vec_env.reset()
+obs, rewards, terminated, truncated, infos = vec_env.step(vec_env.action_space.sample())
+vec_env.close()
 ```
 
-## Project Structure
+To customise environment options (resolution, renderer, etc.), use `dmlab_gym.register()` to re-register with different settings.
 
-| Directory       | Description                        |
-| --------------- | ---------------------------------- |
-| `engine/`       | ioquake3 game engine (GPLv2)       |
-| `q3map2/`       | Map compilation tools (GPLv2)      |
-| `assets/`       | DeepMind Lab assets (CC BY 4.0)    |
-| `assets_oa/`    | Open Arena assets (GPLv2)          |
-| `game_scripts/` | Lua game/level scripts             |
-| `python/`       | Python C extension and pip package |
-| `deepmind/`     | Core DeepMind Lab code             |
-| `public/`       | Public API headers                 |
-| `third_party/`  | Vendored dependencies              |
-| `dmlab_gym/`    | Python package (CLI, utilities)    |
-| `bazel/`        | Bazel build configuration          |
-| `testing/`      | Test utilities                     |
-| `examples/`     | Example agent code                 |
+## Environments
+
+All environments produce `(H, W, 3)` RGB observations and use a 7D integer action space `Box(shape=(7,), dtype=np.intc)`. See [docs/environments/](docs/environments/) for detailed per-group documentation.
+
+| Group                                     | Count | Levels                                                                                                                                                                                                                                                                     | Description                               |
+| ----------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| [Core](docs/environments/core.md)         | 12    | `lt_chasm`, `lt_hallway_slope`, `lt_horseshoe_color`, `lt_space_bounce_hard`, `nav_maze_random_goal_01`, `nav_maze_random_goal_02`, `nav_maze_random_goal_03`, `nav_maze_static_01`, `nav_maze_static_02`, `nav_maze_static_03`, `seekavoid_arena_01`, `stairway_to_melon` | Laser tag arenas and maze navigation      |
+| [Rooms](docs/environments/rooms.md)       | 7     | `rooms_collect_good_objects_test`, `rooms_collect_good_objects_train`, `rooms_exploit_deferred_effects_test`, `rooms_exploit_deferred_effects_train`, `rooms_keys_doors_puzzle`, `rooms_select_nonmatching_object`, `rooms_watermaze`                                      | Object interaction, memory, and planning  |
+| [Language](docs/environments/language.md) | 4     | `language_answer_quantitative_question`, `language_execute_random_task`, `language_select_described_object`, `language_select_located_object`                                                                                                                              | Grounded language understanding           |
+| [LaserTag](docs/environments/lasertag.md) | 4     | `lasertag_one_opponent_large`, `lasertag_one_opponent_small`, `lasertag_three_opponents_large`, `lasertag_three_opponents_small`                                                                                                                                           | Procedural laser tag with bots            |
+| [NatLab](docs/environments/natlab.md)     | 3     | `natlab_fixed_large_map`, `natlab_varying_map_randomized`, `natlab_varying_map_regrowth`                                                                                                                                                                                   | Mushroom foraging in naturalistic terrain |
+| [SkyMaze](docs/environments/skymaze.md)   | 2     | `skymaze_irreversible_path_hard`, `skymaze_irreversible_path_varied`                                                                                                                                                                                                       | Irreversible platform navigation          |
+| [PsychLab](docs/environments/psychlab.md) | 4     | `psychlab_arbitrary_visuomotor_mapping`, `psychlab_continuous_recognition`, `psychlab_sequential_comparison`, `psychlab_visual_search`                                                                                                                                     | Cognitive psychology experiments          |
+| [Explore](docs/environments/explore.md)   | 8     | `explore_goal_locations_large`, `explore_goal_locations_small`, `explore_object_locations_large`, `explore_object_locations_small`, `explore_object_rewards_few`, `explore_object_rewards_many`, `explore_obstructed_goals_large`, `explore_obstructed_goals_small`        | Maze exploration and object collection    |
+
+Access level lists via `dmlab_gym.CORE_LEVELS`, `dmlab_gym.DMLAB30_LEVELS`, or `dmlab_gym.ALL_LEVELS`.
+
+## Environment Options
+
+All options can be passed as keyword arguments to `dmlab_gym.register()` or directly to `DmLabEnv`:
+
+| Option          | Default               | Description                                             |
+| --------------- | --------------------- | ------------------------------------------------------- |
+| `renderer`      | `"software"`          | `"software"` (headless OSMesa) or `"hardware"` (OpenGL) |
+| `width`         | `84`                  | Observation pixel width                                 |
+| `height`        | `84`                  | Observation pixel height                                |
+| `fps`           | `60`                  | Frames per second                                       |
+| `max_num_steps` | `0`                   | Maximum steps per episode (0 = unlimited)               |
+| `observations`  | `["RGB_INTERLEAVED"]` | Observation channels to request from the engine         |
+
+## Wrappers
+
+One custom wrapper included:
+
+| Wrapper            | Description                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `ActionDiscretize` | Converts the 7D action space to `Discrete(9)` using the [IMPALA action set](https://arxiv.org/abs/1802.01561) |
+
+```python
+from dmlab_gym.wrappers import ActionDiscretize
+
+env = ActionDiscretize(gym.make("dmlab_gym/lt_chasm-v0", renderer="software"))
+env.action_space  # Discrete(9)
+```
+
+## Gymnasium Wrapper Compatibility
+
+All standard [Gymnasium wrappers](https://gymnasium.farama.org/main/api/wrappers/) are compatible:
+
+| Wrapper                   | Compatible | Notes                                                  |
+| ------------------------- | ---------- | ------------------------------------------------------ |
+| `GrayscaleObservation`    | Yes        | RGB to grayscale conversion                            |
+| `ResizeObservation`       | Yes        | Resize to any resolution (requires `gymnasium[other]`) |
+| `FrameStackObservation`   | Yes        | Stack N consecutive frames                             |
+| `MaxAndSkipObservation`   | Yes        | Frame skipping with max pooling                        |
+| `ReshapeObservation`      | Yes        | Reshape observation arrays                             |
+| `RescaleObservation`      | Yes        | Best used after `DtypeObservation(float)`              |
+| `DtypeObservation`        | Yes        | Convert uint8 to float32/float64                       |
+| `FlattenObservation`      | Yes        | Flatten to 1D                                          |
+| `NormalizeObservation`    | Yes        | Running mean/std normalisation                         |
+| `TransformObservation`    | Yes        | Custom observation function                            |
+| `TimeLimit`               | Yes        | Truncate after N steps                                 |
+| `ClipReward`              | Yes        | Bound rewards to a range                               |
+| `NormalizeReward`         | Yes        | Normalise rewards via running stats                    |
+| `TransformReward`         | Yes        | Custom reward function                                 |
+| `RecordEpisodeStatistics` | Yes        | Track episode returns and lengths                      |
+| `RecordVideo`             | Yes        | Requires `render_mode="rgb_array"` and `moviepy`       |
+| `HumanRendering`          | Yes        | Requires `render_mode="rgb_array"` and `pygame`        |
+| `FilterObservation`       | No         | Box observation space (not Dict)                       |
+| `ClipAction`              | Yes        | Clips actions to Box bounds                            |
+| `RescaleAction`           | No         | Float rescaling produces NaN with integer action space |
 
 ## License
 
@@ -135,13 +209,3 @@ See [LICENSE](LICENSE) for full details.
 ## Attribution
 
 Based on [DeepMind Lab](https://github.com/google-deepmind/lab) by DeepMind.
-
-If you use DeepMind Lab in your research, please cite the [DeepMind Lab paper](https://arxiv.org/abs/1612.03801).
-
-## Upstream Sources
-
-DeepMind Lab is built from the following open source projects:
-
-- [ioquake3](https://github.com/ioquake/ioq3) -- game engine
-- [bspc](https://github.com/TTimo/bspc) -- bot route compilation
-- [GtkRadiant / q3map2](https://github.com/TTimo/GtkRadiant) -- map compilation

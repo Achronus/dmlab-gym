@@ -1,18 +1,15 @@
 [project]
 name = "dmlab-gym"
-version = "0.1.1"
-description = "DeepMind Lab with Bazel 8, Python 3.13, and Gymnasium/Shimmy support"
+version = "0.2.0"
+description = "DeepMind Lab with Bazel 8, Python 3.13, and Gymnasium support"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "GPL-2.0-only"
-authors = [
-    { name = "Achronus" },
-]
-dependencies = [
-    "gymnasium>=1.2.3",
-    "numpy>=2.4.2",
-    "shimmy[dm-lab]>=2.0.0",
-]
+authors = [{ name = "Achronus" }]
+dependencies = ["gymnasium>=1.2.3", "numpy>=2.4.2"]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pytest-xdist>=3.0", "gymnasium[other]>=1.2.3"]
 
 [project.scripts]
 dmlab-gym = "dmlab_gym.cli:main"
@@ -24,6 +21,11 @@ Upstream = "https://github.com/google-deepmind/lab"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["bazel-*", "lab", ".venv"]
+addopts = "-n auto"
 
 [tool.hatch.build.targets.wheel]
 packages = ["dmlab_gym"]

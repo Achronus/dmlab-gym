@@ -37,4 +37,7 @@ _spec.loader.exec_module(_deepmind_lab)
 _deepmind_lab.__path__ = __path__  # preserve package path for submodule imports
 sys.modules[__name__] = _deepmind_lab
 
-from deepmind_lab import dmenv_module  # noqa: E402 - must come after sys.modules swap
+try:
+    from deepmind_lab import dmenv_module  # noqa: E402 - must come after sys.modules swap
+except ImportError:
+    pass  # dm-env is optional (install deepmind-lab[dmenv_module] to enable)

@@ -2,8 +2,8 @@
 
 import gymnasium as gym
 
-from dmlab_gym.env import DmLabEnv, _DMLAB30_LEVELS
-from dmlab_gym.wrappers import ActionDiscretize, SplitRGBD, SubprocessEnv
+from dmlab_gym.env import _DMLAB30_LEVELS, DmLabEnv
+from dmlab_gym.wrappers import ActionDiscretize
 
 CORE_LEVELS: list[str] = [
     "lt_chasm",
@@ -30,13 +30,11 @@ __all__ = [
     "CORE_LEVELS",
     "DMLAB30_LEVELS",
     "DmLabEnv",
-    "SplitRGBD",
-    "SubprocessEnv",
     "register",
 ]
 
 
-def register(level_name: str, *, version: int = 0, **kwargs: str) -> str:
+def register(level_name: str, *, version: int = 0, **kwargs) -> str:
     """Register a DeepMind Lab level as a Gymnasium environment.
 
     Args:

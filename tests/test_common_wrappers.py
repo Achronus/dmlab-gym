@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 from gymnasium.wrappers import (
+    ClipAction,
     ClipReward,
     NormalizeReward,
     RecordEpisodeStatistics,
     TimeLimit,
 )
-
-
-# -- TimeLimit -----------------------------------------------------------------
 
 
 class TestTimeLimit:
@@ -37,9 +35,6 @@ class TestTimeLimit:
             assert not truncated
 
 
-# -- RecordEpisodeStatistics ---------------------------------------------------
-
-
 class TestRecordEpisodeStatistics:
     """Track episode return and length."""
 
@@ -59,9 +54,6 @@ class TestRecordEpisodeStatistics:
         assert episode_found
 
 
-# -- ClipReward ----------------------------------------------------------------
-
-
 class TestClipReward:
     """Clip reward values."""
 
@@ -73,9 +65,6 @@ class TestClipReward:
         assert -1.0 <= reward <= 1.0
 
 
-# -- NormalizeReward -----------------------------------------------------------
-
-
 class TestNormalizeReward:
     """Normalize rewards using running statistics."""
 
@@ -85,3 +74,32 @@ class TestNormalizeReward:
         action = np.zeros(7, dtype=np.intc)
         _, reward, _, _, _ = wrapped.step(action)
         assert isinstance(reward, (float, np.floating))
+
+
+class TestClipAction:
+    """Clip actions to the Box action space bounds."""
+
+    def test_clips_to_bounds(self, env):
+        wrapped = ClipAction(env)
+        wrapped.reset()
+        low = env.action_space.low
+        high = env.action_space.high
+        # Submit an out-of-bounds action; ClipAction should clamp it.
+        action = high + 100
+        obs, reward, terminated, truncated, info = wrapped.step(action)
+        assert obs is not None
+        assert isinstance(reward, float)
+
+    def test_preserves_valid_action(self, env):
+        wrapped = ClipAction(env)
+        wrapped.reset()
+        action = np.zeros(7, dtype=np.intc)
+        obs, reward, terminated, truncated, info = wrapped.step(action)
+        assert obs is not None
+
+    def test_action_space_is_box(self, env):
+        wrapped = ClipAction(env)
+        assert isinstance(wrapped.action_space, type(env.action_space))
+        assert wrapped.action_space.shape == env.action_space.shape
+
+

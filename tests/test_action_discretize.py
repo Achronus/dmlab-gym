@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 from gymnasium import spaces
 
-from dmlab_gym.wrappers import DEFAULT_ACTION_TABLE, ActionDiscretize, SplitRGBD
+from dmlab_gym.wrappers import DEFAULT_ACTION_TABLE, ActionDiscretize
 
 
 class TestActionDiscretizeSingle:
@@ -43,15 +43,3 @@ class TestActionDiscretizeSingle:
         wrapped.step(1)
 
 
-class TestActionDiscretizeComposition:
-    """ActionDiscretize composed with observation wrappers."""
-
-    def test_with_split_rgbd(self, rgbd_env):
-        wrapped = ActionDiscretize(SplitRGBD(rgbd_env))
-        assert isinstance(wrapped.observation_space, spaces.Dict)
-        assert isinstance(wrapped.action_space, spaces.Discrete)
-        obs, _ = wrapped.reset()
-        assert "RGB" in obs
-        assert "Depth" in obs
-        obs, _, _, _, _ = wrapped.step(0)
-        assert "RGB" in obs

@@ -1,6 +1,6 @@
 # dmlab-gym
 
-A [Gymnasium](https://gymnasium.farama.org/) port of [DeepMind Lab](https://github.com/google-deepmind/lab) — 42 first-person 3D environments for Reinforcement Learning research, updated for Bazel 8 and Python 3.13.
+A [Gymnasium](https://gymnasium.farama.org/) port of [DeepMind Lab](https://github.com/google-deepmind/lab) — 44 first-person 3D environments for Reinforcement Learning research, updated for Bazel 8 and Python 3.13.
 
 [[Original Paper]](https://arxiv.org/abs/1612.03801)
 
@@ -12,7 +12,7 @@ The C game code remains **unchanged** with deprecation warnings removed. This pa
 
 ### Key features
 
-- Standard `gym.make()` API for all 42 levels
+- Standard `gym.make()` API for all 44 levels
 - Compatible with all standard Gymnasium wrappers
 - Vectorized environments via `gym.make_vec()`
 - Python 3.13+ support
@@ -88,7 +88,7 @@ Building deepmind-lab (podman)
 
 ```python
 import gymnasium as gym
-import dmlab_gym  # auto-registers all 42 levels
+import dmlab_gym  # auto-registers all 44 levels
 
 env = gym.make("dmlab_gym/lt_chasm-v0")
 obs, info = env.reset()
@@ -127,16 +127,16 @@ To customise environment options (resolution, renderer, etc.), use `dmlab_gym.re
 
 All environments produce `(H, W, 3)` RGB observations and use a 7D integer action space `Box(shape=(7,), dtype=np.intc)`. See [docs/environments/](docs/environments/) for detailed per-group documentation.
 
-| Group                                     | Count | Levels                                            | Description                               |
-| ----------------------------------------- | ----- | ------------------------------------------------- | ----------------------------------------- |
-| [Core](docs/environments/core.md)         | 12    | `lt_chasm`, `seekavoid_arena_01`, ...             | Laser tag arenas and maze navigation      |
-| [Rooms](docs/environments/rooms.md)       | 7     | `rooms_keys_doors_puzzle`, `rooms_watermaze`, ... | Object interaction, memory, and planning  |
-| [Language](docs/environments/language.md) | 4     | `language_select_described_object`, ...           | Grounded language understanding           |
-| [LaserTag](docs/environments/lasertag.md) | 4     | `lasertag_one_opponent_small`, ...                | Procedural laser tag with bots            |
-| [NatLab](docs/environments/natlab.md)     | 3     | `natlab_fixed_large_map`, ...                     | Mushroom foraging in naturalistic terrain |
-| [SkyMaze](docs/environments/skymaze.md)   | 2     | `skymaze_irreversible_path_hard`, ...             | Irreversible platform navigation          |
-| [PsychLab](docs/environments/psychlab.md) | 4     | `psychlab_visual_search`, ...                     | Cognitive psychology experiments          |
-| [Explore](docs/environments/explore.md)   | 8     | `explore_goal_locations_large`, ...               | Maze exploration and object collection    |
+| Group                                     | Count | Levels                                                                                                                                                                                                                                                                     | Description                               |
+| ----------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| [Core](docs/environments/core.md)         | 12    | `lt_chasm`, `lt_hallway_slope`, `lt_horseshoe_color`, `lt_space_bounce_hard`, `nav_maze_random_goal_01`, `nav_maze_random_goal_02`, `nav_maze_random_goal_03`, `nav_maze_static_01`, `nav_maze_static_02`, `nav_maze_static_03`, `seekavoid_arena_01`, `stairway_to_melon` | Laser tag arenas and maze navigation      |
+| [Rooms](docs/environments/rooms.md)       | 7     | `rooms_collect_good_objects_test`, `rooms_collect_good_objects_train`, `rooms_exploit_deferred_effects_test`, `rooms_exploit_deferred_effects_train`, `rooms_keys_doors_puzzle`, `rooms_select_nonmatching_object`, `rooms_watermaze`                                      | Object interaction, memory, and planning  |
+| [Language](docs/environments/language.md) | 4     | `language_answer_quantitative_question`, `language_execute_random_task`, `language_select_described_object`, `language_select_located_object`                                                                                                                              | Grounded language understanding           |
+| [LaserTag](docs/environments/lasertag.md) | 4     | `lasertag_one_opponent_large`, `lasertag_one_opponent_small`, `lasertag_three_opponents_large`, `lasertag_three_opponents_small`                                                                                                                                           | Procedural laser tag with bots            |
+| [NatLab](docs/environments/natlab.md)     | 3     | `natlab_fixed_large_map`, `natlab_varying_map_randomized`, `natlab_varying_map_regrowth`                                                                                                                                                                                   | Mushroom foraging in naturalistic terrain |
+| [SkyMaze](docs/environments/skymaze.md)   | 2     | `skymaze_irreversible_path_hard`, `skymaze_irreversible_path_varied`                                                                                                                                                                                                       | Irreversible platform navigation          |
+| [PsychLab](docs/environments/psychlab.md) | 4     | `psychlab_arbitrary_visuomotor_mapping`, `psychlab_continuous_recognition`, `psychlab_sequential_comparison`, `psychlab_visual_search`                                                                                                                                     | Cognitive psychology experiments          |
+| [Explore](docs/environments/explore.md)   | 8     | `explore_goal_locations_large`, `explore_goal_locations_small`, `explore_object_locations_large`, `explore_object_locations_small`, `explore_object_rewards_few`, `explore_object_rewards_many`, `explore_obstructed_goals_large`, `explore_obstructed_goals_small`        | Maze exploration and object collection    |
 
 Access level lists via `dmlab_gym.CORE_LEVELS`, `dmlab_gym.DMLAB30_LEVELS`, or `dmlab_gym.ALL_LEVELS`.
 

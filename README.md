@@ -1,8 +1,30 @@
 # dmlab-gym
 
-A fork of [DeepMind Lab](https://github.com/google-deepmind/lab) updated for Bazel 8, Python 3.13, and wrapped with [Gymnasium](https://gymnasium.farama.org/).
+A [Gymnasium](https://gymnasium.farama.org/) port of [DeepMind Lab](https://github.com/google-deepmind/lab) — 42 first-person 3D environments for Reinforcement Learning research, updated for Bazel 8 and Python 3.13.
 
-## Platform Support
+[[Original Paper]](https://arxiv.org/abs/1612.03801)
+
+## What is this?
+
+This project wraps the original [DeepMind Lab](https://github.com/google-deepmind/lab) C engine (Quake 3 based) as standard [Gymnasium](https://gymnasium.farama.org/) environments.
+
+The C game code remains **unchanged** with deprecation warnings removed. This package only adds a Python interface layer around it.
+
+### Key features
+
+- Standard `gym.make()` API for all 42 levels
+- Compatible with all standard Gymnasium wrappers
+- Vectorized environments via `gym.make_vec()`
+- Python 3.13+ support
+- Managed with `uv` and `pyproject.toml`
+
+## Installation
+
+```bash
+pip install dmlab-gym
+```
+
+**Requirements:** Python 3.13+ (64-bit), Linux x86_64.
 
 | Platform       | Status        |
 | -------------- | ------------- |
@@ -14,7 +36,6 @@ A fork of [DeepMind Lab](https://github.com/google-deepmind/lab) updated for Baz
 
 - [uv](https://docs.astral.sh/uv/) (Python environment management)
 - [Podman](https://podman.io/) or [Docker](https://www.docker.com/) (container builds)
-- Python 3.13+
 - OSMesa (runtime dependency for headless rendering) — installed automatically by `dmlab-gym build` if missing
 
 <details>
@@ -29,17 +50,9 @@ A fork of [DeepMind Lab](https://github.com/google-deepmind/lab) updated for Baz
 
 </details>
 
-## Installation
-
-```bash
-pip install dmlab-gym
-```
-
 ## Building the Native Extension
 
 After installing, build the DeepMind Lab native extension:
-
-### Quick Start
 
 ```bash
 dmlab-gym build                        # build and install deepmind-lab
@@ -69,66 +82,122 @@ Building deepmind-lab (podman)
 
 </details>
 
-## Usage
+## Quick Start
+
+### Single environment (standard Gymnasium API)
+
+```python
+import gymnasium as gym
+import dmlab_gym  # auto-registers all 42 levels
+
+env = gym.make("dmlab_gym/lt_chasm-v0")
+obs, info = env.reset()
+
+for _ in range(1000):
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+    if terminated or truncated:
+        obs, info = env.reset()
+
+env.close()
+```
+
+### Vectorized environments (parallel training)
+
+DMLab's C engine only supports one instance per process. Use `gym.make_vec` to run N copies in separate subprocesses — each gets its own memory-isolated process and stays alive between steps:
 
 ```python
 import gymnasium as gym
 import dmlab_gym
 
-# Register a level
-dmlab_gym.register("lt_chasm")
+vec_env = gym.make_vec(
+    "dmlab_gym/lt_chasm-v0",
+    num_envs=8,
+    vectorization_mode="async",
+)
 
-# Single environment
-env = gym.make("dmlab_gym/lt_chasm-v0", renderer="software")
-obs, info = env.reset()       # obs: (320, 240, 3) uint8
-obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
-env.close()
-
-# Vectorized
-vec_env = gym.make_vec("dmlab_gym/lt_chasm-v0", num_envs=4, renderer="software")
-obs, info = vec_env.reset()   # obs: (4, 320, 240, 3) uint8
+obs, infos = vec_env.reset()
+obs, rewards, terminated, truncated, infos = vec_env.step(vec_env.action_space.sample())
+vec_env.close()
 ```
 
-Observations follow the standard Gymnasium convention — channels-last `(H, W, 3)` uint8 Box space using `RGB_INTERLEAVED`.
-
-### Wrappers
-
-Two custom wrappers are included:
-
-- **`ActionDiscretize`** — converts the native 7-dimensional continuous action space to `Discrete(9)` using the IMPALA action set ([Espeholt et al., 2018](https://arxiv.org/abs/1802.01561), Table D.2).
-- **`SplitRGBD`** — splits an RGBD observation into a Dict with separate `RGB` and `Depth` keys.
+To customise environment options (resolution, renderer, etc.), use `dmlab_gym.register()` to re-register with different settings. Default:
 
 ```python
-from dmlab_gym.wrappers import ActionDiscretize, SplitRGBD
+dmlab_gym.register("lt_chasm", renderer="software", width=84, height=84, fps=60)
+```
+
+## Environments
+
+All environments produce `(H, W, 3)` RGB observations and use a 7D integer action space `Box(shape=(7,), dtype=np.intc)`. See [docs/environments/](docs/environments/) for detailed per-group documentation.
+
+| Group                                     | Count | Levels                                            | Description                               |
+| ----------------------------------------- | ----- | ------------------------------------------------- | ----------------------------------------- |
+| [Core](docs/environments/core.md)         | 12    | `lt_chasm`, `seekavoid_arena_01`, ...             | Laser tag arenas and maze navigation      |
+| [Rooms](docs/environments/rooms.md)       | 7     | `rooms_keys_doors_puzzle`, `rooms_watermaze`, ... | Object interaction, memory, and planning  |
+| [Language](docs/environments/language.md) | 4     | `language_select_described_object`, ...           | Grounded language understanding           |
+| [LaserTag](docs/environments/lasertag.md) | 4     | `lasertag_one_opponent_small`, ...                | Procedural laser tag with bots            |
+| [NatLab](docs/environments/natlab.md)     | 3     | `natlab_fixed_large_map`, ...                     | Mushroom foraging in naturalistic terrain |
+| [SkyMaze](docs/environments/skymaze.md)   | 2     | `skymaze_irreversible_path_hard`, ...             | Irreversible platform navigation          |
+| [PsychLab](docs/environments/psychlab.md) | 4     | `psychlab_visual_search`, ...                     | Cognitive psychology experiments          |
+| [Explore](docs/environments/explore.md)   | 8     | `explore_goal_locations_large`, ...               | Maze exploration and object collection    |
+
+Access level lists via `dmlab_gym.CORE_LEVELS`, `dmlab_gym.DMLAB30_LEVELS`, or `dmlab_gym.ALL_LEVELS`.
+
+## Environment Options
+
+All options can be passed as keyword arguments to `dmlab_gym.register()` or directly to `DmLabEnv`:
+
+| Option          | Default               | Description                                             |
+| --------------- | --------------------- | ------------------------------------------------------- |
+| `renderer`      | `"software"`          | `"software"` (headless OSMesa) or `"hardware"` (OpenGL) |
+| `width`         | `240`                 | Observation pixel width                                 |
+| `height`        | `320`                 | Observation pixel height                                |
+| `fps`           | `60`                  | Frames per second                                       |
+| `max_num_steps` | `0`                   | Maximum steps per episode (0 = unlimited)               |
+| `observations`  | `["RGB_INTERLEAVED"]` | Observation channels to request from the engine         |
+
+## Wrappers
+
+One custom wrapper included:
+
+| Wrapper            | Description                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `ActionDiscretize` | Converts the 7D action space to `Discrete(9)` using the [IMPALA action set](https://arxiv.org/abs/1802.01561) |
+
+```python
+from dmlab_gym.wrappers import ActionDiscretize
 
 env = ActionDiscretize(gym.make("dmlab_gym/lt_chasm-v0", renderer="software"))
 env.action_space  # Discrete(9)
 ```
 
+## Gymnasium Wrapper Compatibility
+
 All standard [Gymnasium wrappers](https://gymnasium.farama.org/main/api/wrappers/) are compatible:
 
-| Wrapper                   | Compatible | Notes                                                      |
-| ------------------------- | ---------- | ---------------------------------------------------------- |
-| `GrayscaleObservation`    | Yes        | RGB to grayscale conversion                                |
-| `ResizeObservation`       | Yes        | Resize to any resolution (requires `gymnasium[other]`)     |
-| `FrameStackObservation`   | Yes        | Stack N consecutive frames                                 |
-| `MaxAndSkipObservation`   | Yes        | Frame skipping with max pooling                            |
-| `ReshapeObservation`      | Yes        | Reshape observation arrays                                 |
-| `RescaleObservation`      | Yes        | Best used after `DtypeObservation(float)`                  |
-| `DtypeObservation`        | Yes        | Convert uint8 to float32/float64                           |
-| `FlattenObservation`      | Yes        | Flatten to 1D                                              |
-| `NormalizeObservation`    | Yes        | Running mean/std normalisation                             |
-| `TransformObservation`    | Yes        | Custom observation function                                |
-| `TimeLimit`               | Yes        | Truncate after N steps                                     |
-| `ClipReward`              | Yes        | Bound rewards to a range                                   |
-| `NormalizeReward`         | Yes        | Normalise rewards via running stats                        |
-| `TransformReward`         | Yes        | Custom reward function                                     |
-| `RecordEpisodeStatistics` | Yes        | Track episode returns and lengths                          |
-| `RecordVideo`             | Yes        | Requires `render_mode="rgb_array"` and `moviepy`           |
-| `HumanRendering`          | Yes        | Requires `render_mode="rgb_array"`, `pygame`, and `opencv` |
-| `FilterObservation`       | No         | Box observation space (not Dict)                           |
-| `ClipAction`              | No         | Use `ActionDiscretize` instead                             |
-| `RescaleAction`           | No         | Use `ActionDiscretize` instead                             |
+| Wrapper                   | Compatible | Notes                                                  |
+| ------------------------- | ---------- | ------------------------------------------------------ |
+| `GrayscaleObservation`    | Yes        | RGB to grayscale conversion                            |
+| `ResizeObservation`       | Yes        | Resize to any resolution (requires `gymnasium[other]`) |
+| `FrameStackObservation`   | Yes        | Stack N consecutive frames                             |
+| `MaxAndSkipObservation`   | Yes        | Frame skipping with max pooling                        |
+| `ReshapeObservation`      | Yes        | Reshape observation arrays                             |
+| `RescaleObservation`      | Yes        | Best used after `DtypeObservation(float)`              |
+| `DtypeObservation`        | Yes        | Convert uint8 to float32/float64                       |
+| `FlattenObservation`      | Yes        | Flatten to 1D                                          |
+| `NormalizeObservation`    | Yes        | Running mean/std normalisation                         |
+| `TransformObservation`    | Yes        | Custom observation function                            |
+| `TimeLimit`               | Yes        | Truncate after N steps                                 |
+| `ClipReward`              | Yes        | Bound rewards to a range                               |
+| `NormalizeReward`         | Yes        | Normalise rewards via running stats                    |
+| `TransformReward`         | Yes        | Custom reward function                                 |
+| `RecordEpisodeStatistics` | Yes        | Track episode returns and lengths                      |
+| `RecordVideo`             | No         | No render modes supported                              |
+| `HumanRendering`          | No         | No render modes supported                              |
+| `FilterObservation`       | No         | Box observation space (not Dict)                       |
+| `ClipAction`              | Yes        | Clips actions to Box bounds                            |
+| `RescaleAction`           | No         | Float rescaling produces NaN with integer action space |
 
 ## License
 
@@ -144,5 +213,3 @@ See [LICENSE](LICENSE) for full details.
 ## Attribution
 
 Based on [DeepMind Lab](https://github.com/google-deepmind/lab) by DeepMind.
-
-If you use DeepMind Lab in your research, please cite the [DeepMind Lab paper](https://arxiv.org/abs/1612.03801).

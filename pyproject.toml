@@ -6,14 +6,10 @@ readme = "README.md"
 requires-python = ">=3.13"
 license = "GPL-2.0-only"
 authors = [{ name = "Achronus" }]
-dependencies = [
-    "deepmind-lab",
-    "gymnasium>=1.2.3",
-    "numpy>=2.4.2",
-]
+dependencies = ["gymnasium>=1.2.3", "numpy>=2.4.2"]
 
 [project.optional-dependencies]
-test = ["pytest>=8.0", "gymnasium[other]>=1.2.3"]
+test = ["pytest>=8.0", "pytest-xdist>=3.0", "gymnasium[other]>=1.2.3"]
 
 [project.scripts]
 dmlab-gym = "dmlab_gym.cli:main"
@@ -29,12 +25,10 @@ build-backend = "hatchling.build"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = ["bazel-*", "lab", ".venv"]
+addopts = "-n auto"
 
 [tool.hatch.build.targets.wheel]
 packages = ["dmlab_gym"]
 
 [tool.hatch.build.targets.sdist]
 include = ["dmlab_gym/", "README.md", "LICENSE", "pyproject.toml"]
-
-[tool.uv.sources]
-deepmind-lab = { path = "lab/deepmind_lab-1.0-py3-none-any.whl" }

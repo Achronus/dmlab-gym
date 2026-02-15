@@ -53,3 +53,8 @@ def register(level_name: str, *, version: int = 0, **kwargs) -> str:
             kwargs={"level_name": level_name, **kwargs},
         )
     return env_id
+
+
+# Auto-register all levels with a default config on import
+for _level in ALL_LEVELS:
+    register(_level, renderer="software", width=84, height=84, fps=60)

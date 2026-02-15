@@ -227,7 +227,10 @@ def cmd_build(args: argparse.Namespace) -> None:
         return
 
     if shutil.which("uv"):
-        install_cmd = ["uv", "pip", "install", "--upgrade", "--force-reinstall", str(wheel)]
+        install_cmd = [
+            "uv", "pip", "install", "--upgrade", "--force-reinstall",
+            "--link-mode", "copy", str(wheel),
+        ]
     else:
         install_cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "--force-reinstall", str(wheel)]
 
@@ -247,6 +250,11 @@ def cmd_build(args: argparse.Namespace) -> None:
         if result.stderr:
             print(result.stderr, file=sys.stderr)
         sys.exit(1)
+
+    # Remove bazel symlinks left behind by the container build.
+    for link in root.glob("bazel-*"):
+        if link.is_symlink():
+            link.unlink()
 
     print(f"\n  Done! deepmind-lab installed from {wheel.name}")
 

@@ -121,11 +121,7 @@ obs, rewards, terminated, truncated, infos = vec_env.step(vec_env.action_space.s
 vec_env.close()
 ```
 
-To customise environment options (resolution, renderer, etc.), use `dmlab_gym.register()` to re-register with different settings. Default:
-
-```python
-dmlab_gym.register("lt_chasm", renderer="software", width=84, height=84, fps=60)
-```
+To customise environment options (resolution, renderer, etc.), use `dmlab_gym.register()` to re-register with different settings.
 
 ## Environments
 
@@ -151,8 +147,8 @@ All options can be passed as keyword arguments to `dmlab_gym.register()` or dire
 | Option          | Default               | Description                                             |
 | --------------- | --------------------- | ------------------------------------------------------- |
 | `renderer`      | `"software"`          | `"software"` (headless OSMesa) or `"hardware"` (OpenGL) |
-| `width`         | `240`                 | Observation pixel width                                 |
-| `height`        | `320`                 | Observation pixel height                                |
+| `width`         | `84`                  | Observation pixel width                                 |
+| `height`        | `84`                  | Observation pixel height                                |
 | `fps`           | `60`                  | Frames per second                                       |
 | `max_num_steps` | `0`                   | Maximum steps per episode (0 = unlimited)               |
 | `observations`  | `["RGB_INTERLEAVED"]` | Observation channels to request from the engine         |
